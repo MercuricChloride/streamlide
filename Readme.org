@@ -1,0 +1,12 @@
+#+title: Readme
+
+* General Tasks
+
+- [ ] Add support for interaction with the server
+- [ ] Add support for perstistance
+- [ ] Add support for syntax highlighting
+- [ ] Add a way to make and collapse modules
+
+* Tasks to run
+
+[[shell:cargo run][Start Program]]

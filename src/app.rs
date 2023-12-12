@@ -1,9 +1,23 @@
+use egui::{ahash::HashMap, Window};
+
+use crate::editor::make_module_editor;
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize)]
+pub struct ModuleState {
+    pub closed: bool,
+    pub source: String,
+}
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct TemplateApp {
     // Example stuff:
     label: String,
+
+    /// A hashmap from id -> code for that module
+    modules: HashMap<i32, ModuleState>,
 
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
@@ -15,6 +29,7 @@ impl Default for TemplateApp {
             // Example stuff:
             label: "Hello World!".to_owned(),
             value: 2.7,
+            modules: Default::default(),
         }
     }
 }
@@ -28,7 +43,7 @@ impl TemplateApp {
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
         if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+            //return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
 
         Default::default()
@@ -85,6 +100,24 @@ impl eframe::App for TemplateApp {
                 "https://github.com/emilk/eframe_template/blob/master/",
                 "Source code."
             ));
+
+            for i in 1..4 {
+                let module = match self.modules.get_mut(&i) {
+                    Some(module) => module,
+                    None => {
+                        self.modules.insert(
+                            i,
+                            ModuleState {
+                                closed: true,
+                                source: String::from("Hello world!"),
+                            },
+                        );
+                        self.modules.get_mut(&i).unwrap()
+                    }
+                };
+
+                make_module_editor(ctx, i, module);
+            }
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 powered_by_egui_and_eframe(ui);
