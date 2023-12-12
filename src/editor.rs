@@ -1,5 +1,10 @@
 use crate::app::ModuleState;
 use egui::{Context, Ui, Window};
+use reqwest;
+
+pub fn send_code(code: &String) {
+    // should send code to the server
+}
 
 pub fn repl_buttons(ui: &mut Ui) {
     ui.set_min_width(100.0);
@@ -25,9 +30,5 @@ pub fn make_module_editor(ctx: &Context, id: i32, state: &mut ModuleState) {
                 ui.code_editor(&mut state.source);
                 repl_buttons(&mut ui);
             });
-
-            //if ui.button("click me to close").clicked() {
-            //          on_close(state);
-            //}
         });
 }

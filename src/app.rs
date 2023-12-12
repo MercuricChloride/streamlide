@@ -16,6 +16,36 @@ pub struct AppConfig {
 
     /// The port for the streamline server
     pub streamline_server_port: i32,
+
+    /// The host for the nrepl server
+    pub nrepl_host: String,
+
+    /// The host for the streamline server
+    pub streamline_host: String,
+}
+
+impl AppConfig {
+    pub fn get_connections(&self) -> (String, String) {
+        let nrepl_connection = format!("{}:{}", self.nrepl_host, self.nrepl_port);
+        let streamline_connection = format!("{}:{}", self.streamline_host, self.streamline_host);
+        (nrepl_connection, streamline_connection)
+    }
+
+    pub fn send_code(code: &String) -> String {
+        todo!("Should send code over to the server");
+    }
+
+    pub fn undefine_module(module_name: &String) -> String {
+        todo!("Should undefined the module in the repl")
+    }
+
+    pub fn load_blocks(start_block: i32, stop_block: i32) -> String {
+        todo!("Should Load Blocks in the Repl")
+    }
+
+    pub fn execute_module(start_block: i32, stop_block: i32, module_name: &String) -> String {
+        todo!("Should execute the module for the selected block range")
+    }
 }
 
 impl Default for AppConfig {
@@ -23,6 +53,8 @@ impl Default for AppConfig {
         Self {
             nrepl_port: 7869,
             streamline_server_port: 8080,
+            nrepl_host: String::from("localhost"),
+            streamline_host: String::from("localhost"),
         }
     }
 }
