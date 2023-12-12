@@ -1,4 +1,4 @@
-use egui::{ahash::HashMap, Window};
+use egui::{ahash::HashMap, Context, DragValue, RichText, Ui, Window};
 
 use crate::editor::make_module_editor;
 use serde::{Deserialize, Serialize};
@@ -7,6 +7,24 @@ use serde::{Deserialize, Serialize};
 pub struct ModuleState {
     pub closed: bool,
     pub source: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct AppConfig {
+    /// The port of the nrepl server
+    pub nrepl_port: i32,
+
+    /// The port for the streamline server
+    pub streamline_server_port: i32,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            nrepl_port: 7869,
+            streamline_server_port: 8080,
+        }
+    }
 }
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -19,6 +37,12 @@ pub struct TemplateApp {
     /// A hashmap from id -> code for that module
     modules: HashMap<i32, ModuleState>,
 
+    /// Toggles whether to show the config panel or not
+    show_config: bool,
+
+    /// App Config
+    config: AppConfig,
+
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
 }
@@ -30,6 +54,8 @@ impl Default for TemplateApp {
             label: "Hello World!".to_owned(),
             value: 2.7,
             modules: Default::default(),
+            show_config: false,
+            config: AppConfig::default(),
         }
     }
 }
@@ -48,6 +74,33 @@ impl TemplateApp {
 
         Default::default()
     }
+}
+
+fn render_config(app: &mut TemplateApp, ctx: &Context) {
+    Window::new("App Config")
+        .open(&mut app.show_config)
+        .show(ctx, |ui| {
+            egui::Grid::new("App Config")
+                .num_columns(1)
+                .min_col_width(40.0)
+                .max_col_width(75.0)
+                .show(ui, |ui| {
+                    ui.vertical(|ui| {
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("Nrepl Port:").size(15.0));
+                            ui.add(DragValue::new(&mut app.config.nrepl_port));
+                        });
+
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new("Streamline Server Port:").size(15.0));
+                            ui.add(
+                                DragValue::new(&mut app.config.streamline_server_port)
+                                    .clamp_range(1000..=10000),
+                            );
+                        });
+                    });
+                });
+        });
 }
 
 impl eframe::App for TemplateApp {
@@ -74,6 +127,10 @@ impl eframe::App for TemplateApp {
                         }
                     });
                     ui.add_space(16.0);
+
+                    ui.menu_button("Config", |ui| {
+                        ui.checkbox(&mut self.show_config, "Show Config Panel");
+                    });
                 }
 
                 egui::widgets::global_dark_light_mode_buttons(ui);
@@ -95,6 +152,10 @@ impl eframe::App for TemplateApp {
             }
 
             ui.separator();
+
+            if self.show_config {
+                render_config(self, ctx);
+            }
 
             ui.add(egui::github_link_file!(
                 "https://github.com/emilk/eframe_template/blob/master/",
