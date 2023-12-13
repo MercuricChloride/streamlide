@@ -1,4 +1,7 @@
-use egui::{ahash::HashMap, Context, DragValue, RichText, Ui, Window};
+use std::{collections::HashMap, fmt::format, sync::mpsc::channel, thread::spawn};
+
+use egui::{Context, DragValue, RichText, Ui, Window};
+use reqwest::blocking::Client;
 
 use crate::editor::make_module_editor;
 use serde::{Deserialize, Serialize};
@@ -22,6 +25,10 @@ pub struct AppConfig {
 
     /// The host for the streamline server
     pub streamline_host: String,
+
+    #[serde(skip)]
+    /// The reqwest client
+    pub client: Client,
 }
 
 impl AppConfig {
@@ -31,8 +38,18 @@ impl AppConfig {
         (nrepl_connection, streamline_connection)
     }
 
-    pub fn send_code(code: &String) -> String {
-        todo!("Should send code over to the server");
+    pub fn send_code(&self, code: &String) -> String {
+        let url = format!(
+            "http://{}:{}/nrepl",
+            self.streamline_host, self.streamline_server_port
+        );
+
+        let mut map = HashMap::new();
+        map.insert("src", code);
+
+        let res = self.client.post(url).json(&map).send().unwrap();
+
+        res.text().unwrap()
     }
 
     pub fn undefine_module(module_name: &String) -> String {
@@ -55,6 +72,7 @@ impl Default for AppConfig {
             streamline_server_port: 8080,
             nrepl_host: String::from("localhost"),
             streamline_host: String::from("localhost"),
+            client: Client::new(),
         }
     }
 }
@@ -193,6 +211,14 @@ impl eframe::App for TemplateApp {
                 "https://github.com/emilk/eframe_template/blob/master/",
                 "Source code."
             ));
+
+            if ui.button("Send code").clicked() {
+                let code = String::from("stream foo_bar;");
+
+                let resp = self.config.send_code(&code);
+
+                println!("{}", resp);
+            }
 
             for i in 1..4 {
                 let module = match self.modules.get_mut(&i) {
