@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::format, sync::mpsc::channel, thread::spawn};
+use std::{collections::HashMap, fmt::format, sync::{mpsc::channel, Arc, Mutex, RwLock}, thread::spawn};
 
 use egui::{Context, DragValue, RichText, Ui, Window};
 use reqwest::blocking::Client;
@@ -31,36 +31,38 @@ pub struct AppConfig {
     pub client: Client,
 }
 
-impl AppConfig {
-    pub fn get_connections(&self) -> (String, String) {
-        let nrepl_connection = format!("{}:{}", self.nrepl_host, self.nrepl_port);
-        let streamline_connection = format!("{}:{}", self.streamline_host, self.streamline_host);
-        (nrepl_connection, streamline_connection)
-    }
+trait StreamlineClient {
+    fn send_code(&self, code: &String) -> String;
+    fn undefine_module(&self, module_name: &String) -> String;
+    fn load_blocks(&self, start_block: i32, stop_block: i32) -> String;
+    fn execute_module(&self, start_block: i32, stop_block:i32, module_name: &String) -> String;
+}
 
-    pub fn send_code(&self, code: &String) -> String {
+impl StreamlineClient for RwLock<AppConfig> {
+    fn send_code(&self, code: &String) -> String {
+        let data = self.read().unwrap();
         let url = format!(
             "http://{}:{}/nrepl",
-            self.streamline_host, self.streamline_server_port
+            data.streamline_host, data.streamline_server_port
         );
 
         let mut map = HashMap::new();
         map.insert("src", code);
 
-        let res = self.client.post(url).json(&map).send().unwrap();
+        let res = data.client.post(url).json(&map).send().unwrap();
 
         res.text().unwrap()
     }
 
-    pub fn undefine_module(module_name: &String) -> String {
+    fn undefine_module(&self, module_name: &String) -> String {
         todo!("Should undefined the module in the repl")
     }
 
-    pub fn load_blocks(start_block: i32, stop_block: i32) -> String {
+    fn load_blocks(&self, start_block: i32, stop_block: i32) -> String {
         todo!("Should Load Blocks in the Repl")
     }
 
-    pub fn execute_module(start_block: i32, stop_block: i32, module_name: &String) -> String {
+    fn execute_module(&self, start_block: i32, stop_block: i32, module_name: &String) -> String {
         todo!("Should execute the module for the selected block range")
     }
 }
@@ -91,7 +93,7 @@ pub struct TemplateApp {
     show_config: bool,
 
     /// App Config
-    config: AppConfig,
+    config: Arc<RwLock<AppConfig>>,
 
     #[serde(skip)] // This how you opt-out of serialization of a field
     value: f32,
@@ -105,7 +107,7 @@ impl Default for TemplateApp {
             value: 2.7,
             modules: Default::default(),
             show_config: false,
-            config: AppConfig::default(),
+            config: Arc::new(RwLock::new(AppConfig::default())),
         }
     }
 }
@@ -136,15 +138,16 @@ fn render_config(app: &mut TemplateApp, ctx: &Context) {
                 .max_col_width(75.0)
                 .show(ui, |ui| {
                     ui.vertical(|ui| {
+                        let mut config = app.config.write().unwrap();
                         ui.horizontal(|ui| {
                             ui.label(RichText::new("Nrepl Port:").size(15.0));
-                            ui.add(DragValue::new(&mut app.config.nrepl_port));
+                            ui.add(DragValue::new(&mut config.nrepl_port));
                         });
 
                         ui.horizontal(|ui| {
                             ui.label(RichText::new("Streamline Server Port:").size(15.0));
                             ui.add(
-                                DragValue::new(&mut app.config.streamline_server_port)
+                                DragValue::new(&mut config.streamline_server_port)
                                     .clamp_range(1000..=10000),
                             );
                         });
